@@ -72,6 +72,12 @@ excludeds = {}
 @bot.command()
 @commands.guild_only()
 async def dinner(ctx):
+    global answers
+    global excludeds
+    answers = {}
+    excludeds = {}
+
+
     await ctx.author.send("Process started, send '/q' to stop at any time.")
     # Iterate over each question
     # for question in questions:
@@ -88,12 +94,13 @@ async def dinner(ctx):
                     tmp = questions[1]
                     for field in data_json.keys():
                         tmp += field + ", "
-                    tmp += "\n For example: bob, jerry, nick"
+                    tmp += "\n For example: `bob, jerry, nick`"
                     tmp += "\n If none, type 'none'"
                     await ctx.author.send(tmp)
                 case 2:
                     # For each person excluded, how much are they excluded from the total cost?
                     # Then perform last check
+                    print(len(excludeds))
                     await getExclusions(ctx)
 
 
@@ -103,12 +110,12 @@ async def dinner(ctx):
                     else:
                         if (len(excludeds) == 1):
                             for name in excludeds:
-                                tmp += str(name) + "was not included with $" + str(excludeds[name])
+                                tmp += str(name) + " was not included with $" + str(excludeds[name])
                         else:
                             for name in excludeds:
                                 tmp += str(name) + ", "
-                                tmp += "were excluded with " + str(excludeds[name])
-                    tmp += "/n If the above is correct, yay! Otherwise nay!"
+                                tmp += " was excluded with $" + str(excludeds[name]) + ", "
+                    tmp += "\n If the above is correct, type `yay`, otherwise `nay`"
                     await ctx.author.send(tmp)
                     pass
 
@@ -132,10 +139,7 @@ async def dinner(ctx):
 
 
     # Display the collected answers
-    await ctx.author.send("Thank you for answering the questions! Here are your answers:")
-    for question, answer in answers.items():
-        await ctx.author.send(f"{question}: {answer}")
-
+    await ctx.author.send("All done, and all recorded! You can check your account with these commands which are yet to be implemented.")
 
 async def getResponse(stage, check, response):
     global excludeds
