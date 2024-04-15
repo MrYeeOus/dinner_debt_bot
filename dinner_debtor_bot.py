@@ -63,7 +63,7 @@ Stages:
     2: For each pal, how much are they excluded from the total cost
 
 """
-stages = 0
+stages = 3 # No. of stages + 1
 
 # Initialize a dictionary to store user answers
 answers = {}
@@ -71,6 +71,10 @@ answers = {}
 @bot.command()
 @commands.guild_only()
 async def start_questions(ctx):
+    def check(m):
+        return m.author == ctx.author and m.channel == ctx.channel
+
+
     await ctx.send("Process started, send '/q' to stop at any time.")
     # Iterate over each question
     # for question in questions:
@@ -92,21 +96,29 @@ async def start_questions(ctx):
                 await ctx.send(tmp)
                 pass
 
-                # Wait for the user's response
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-
-        # Store the user's answer, stop on /stop
-        response = await bot.wait_for('message', check=check, timeout=60)
-        if response.content.lower() == '/stop':
-            break;
+        if await getResponse(stage, check):
+            # /stop called
+            break
         else:
-            answers[stage] = response.content
+            pass
+
+
 
     # Display the collected answers
     await ctx.send("Thank you for answering the questions! Here are your answers:")
     for question, answer in answers.items():
         await ctx.send(f"{question}: {answer}")
+
+
+async def getResponse(stage, check):
+    # Store the user's answer, stop on /stop
+    response = await bot.wait_for('message', check=check, timeout=60)
+    if response.content.lower() == '/stop':
+        return 1
+    else:
+        answers[stage] = response.content
+        return 0
+
 
 # Run the bot
 bot.run(str(TOKEN))
