@@ -54,7 +54,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 questions = [
         "How much did you spend?",
         "Is anyone excluded, out of ",
-        "For x, how much is excluded?"
+        ""
         ]
 """
 Stages:
@@ -67,57 +67,120 @@ stages = 3 # No. of stages + 1
 
 # Initialize a dictionary to store user answers
 answers = {}
+excludeds = {}
 
 @bot.command()
 @commands.guild_only()
-async def start_questions(ctx):
-    def check(m):
-        return m.author == ctx.author and m.channel == ctx.channel
-
-
-    await ctx.send("Process started, send '/q' to stop at any time.")
+async def dinner(ctx):
+    await ctx.author.send("Process started, send '/q' to stop at any time.")
     # Iterate over each question
     # for question in questions:
     for stage in range(stages):
-        match stage:
-            case 0:
-                # How much did you spend?
-                await ctx.send(questions[0])
-            case 1:
-                # Is anyone excluded, out of:
-                tmp = questions[1]
-                for field in data_json.keys():
-                    tmp += field + ", "
-                tmp += " for example: bob, jerry, nick"
-                await ctx.send(tmp)
-            case 2:
-                # For each person excluded, how much are they excluded from the total cost?
-                tmp = questions[2] + "(" + str(answers[0]) + ")?"
-                await ctx.send(tmp)
-                pass
+        stageContinue = False
+        notStop = True
+        while (not stageContinue) and notStop:
+            match stage:
+                case 0:
+                    # How much did you spend?
+                    await ctx.author.send(questions[0])
+                case 1:
+                    # Is anyone excluded, out of:
+                    tmp = questions[1]
+                    for field in data_json.keys():
+                        tmp += field + ", "
+                    tmp += "\n For example: bob, jerry, nick"
+                    tmp += "\n If none, type 'none'"
+                    await ctx.author.send(tmp)
+                case 2:
+                    # For each person excluded, how much are they excluded from the total cost?
+                    # Then perform last check
+                    await getExclusions(ctx)
 
-        if await getResponse(stage, check):
-            # /stop called
-            break
-        else:
-            pass
 
+                    tmp = "Ok, so just to check: You spent " + str(answers[0]) + ", "
+                    if answers[1] == "none":
+                        tmp += "everyone is included"
+                    else:
+                        if (len(excludeds) == 1):
+                            for name in excludeds:
+                                tmp += str(name) + "was not included with $" + str(excludeds[name])
+                        else:
+                            for name in excludeds:
+                                tmp += str(name) + ", "
+                                tmp += "were excluded with " + str(excludeds[name])
+                    tmp += "/n If the above is correct, yay! Otherwise nay!"
+                    await ctx.author.send(tmp)
+                    pass
+
+            # Store the user's answer, stop on /stop
+            def check(m):
+                return m.author == ctx.author #and m.channel == ctx.channel
+            response = await bot.wait_for('message', check=check, timeout=60)
+
+            match await getResponse(stage, check, response):
+                case 0:
+                    # Continue
+                    stageContinue = True
+                case 1:
+                    # /stop command called
+                    notStop = False
+                case 2:
+                    # invalid response
+                    stageContinue = False
+                    await ctx.author.send("Whoops, that doesn't sound right")
+                    
 
 
     # Display the collected answers
-    await ctx.send("Thank you for answering the questions! Here are your answers:")
+    await ctx.author.send("Thank you for answering the questions! Here are your answers:")
     for question, answer in answers.items():
-        await ctx.send(f"{question}: {answer}")
+        await ctx.author.send(f"{question}: {answer}")
 
 
-async def getResponse(stage, check):
-    # Store the user's answer, stop on /stop
-    response = await bot.wait_for('message', check=check, timeout=60)
+async def getResponse(stage, check, response):
+    global excludeds
     if response.content.lower() == '/stop':
         return 1
     else:
+        match stage:
+            case 0:
+                # How much total
+                if not response.content.replace("$", "").isdigit():
+                    # Non-numeric answer
+                    return 2
+            case 1:
+                # Excluded people
+                if response.content.lower() != "none":
+                    tmp = response.content.lower().split(",")
+                    tmp = [s.strip() for s in tmp]
+                    if (all(name in list(data_json.keys()) for name in tmp)):
+                        excludeds = {key: 0 for key in tmp}
+                    else:
+                        return 2
+            case 2:
+                # For each person in excludeds, how much are they excluded by
+                pass
+
+
         answers[stage] = response.content
         return 0
+
+async def getExclusions(ctx):
+    for person in excludeds:
+        stageContinue = False
+        while not stageContinue:
+            tmp = "For " + person + ", how much are they excluded from the total $" + str(answers[0]) + "?"
+            await ctx.author.send(tmp)
+            def check(m):
+                return m.author == ctx.author #and m.channel == ctx.channel
+            response = await bot.wait_for('message', check=check, timeout=60)
+
+            if response.content.isdigit():
+                excludeds[person] = response.content
+                stageContinue = True
+            else:
+                stageContinue = False
+                await ctx.author.send("Whoops, that doesn't sound right")
 
 
 # Run the bot
