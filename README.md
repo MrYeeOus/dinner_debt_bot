@@ -5,5 +5,5 @@ A bot that tracks how much each member in the party owes the other members, for 
 
 ## Usage (so far):
 * Prepare environment:`pip install -f requirements.txt`
-* Put your pal's names in `names.list`
+* ~Put your pal's names in `names.list`~
 * Run `python dinner_debtor_bot.py`

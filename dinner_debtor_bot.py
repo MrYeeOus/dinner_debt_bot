@@ -1,5 +1,4 @@
-import discord
-import json
+import discord, json, os
 from dotenv import load_dotenv
 from discord.ext import commands
 
@@ -11,29 +10,43 @@ TOKEN = str(os.getenv('DISCORD_TOKEN'))
 
 #------------------------------------------------------------------------------------
 # Load names.list and generate a `data.json` file with those names
-with open('names.list', 'r') as fs:
-    content = fs.read();
-    names = content.split(",")
+if not os.path.exists("./data.json"):
+    with open('names.list', 'r') as fs:
+        content = fs.readlines()[1].rstrip();
+        names = content.split(", ")
 
-    data_json = {}
-    for i, obj in enumerate(names):
-        gen_pay_list = {}
-        for j, sub_obj in enumerate(names):
-            if sub_obj != obj:
-                # Set default pay value to 0, obviously ;)
-                gen_pay_list[sub_obj] = 0
-        data_json[obj] = gen_pay_list
-    
-    # Write to data.json
-    with open('data.json', 'w') as outfile:
-        outfile.write(json.dumps(data_json, indent=4))
+        data_json = {}
+        for i, obj in enumerate(names):
+            gen_pay_list = {}
+            for j, sub_obj in enumerate(names):
+                if sub_obj != obj:
+                    # Set default pay value to 0, obviously ;)
+                    gen_pay_list[sub_obj] = 0
+            gen_pay_list['earned'] = 0
+            data_json[obj] = gen_pay_list
+        
+        # Write to data.json
+        with open('data.json', 'w') as outfile:
+            outfile.write(json.dumps(data_json, indent=4))
+            print("Debt data file created!")
 
+#------------------------------------------------------------------------------------
+# TODO:
+# Setup function: call /setup to set up friends list
 
 
 
 #------------------------------------------------------------------------------------
+# Load data.json names
+with open('data.json', 'r') as fs:
+    data_json = json.load(fs)
 
-# Initialize the bot, need to choose specific intents
+#------------------------------------------------------------------------------------
+
+
+# Initialize the bot
+# Need to choose specific intents
+
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
