@@ -24,7 +24,7 @@ if not os.path.exists("./data.json"):
                     gen_pay_list[sub_obj] = 0
             gen_pay_list['earned'] = 0
             data_json[obj] = gen_pay_list
-        
+
         # Write to data.json
         with open('data.json', 'w') as outfile:
             outfile.write(json.dumps(data_json, indent=4))
@@ -50,14 +50,20 @@ with open('data.json', 'r') as fs:
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Define your questions
+# Define questions
 questions = [
-    "What is your name?",
-    "How old are you?",
-    "Where are you from?",
-    "What is your favorite color?",
-    "What is your favorite food?"
-]
+        "How much did you spend?",
+        "Is anyone excluded, out of ",
+        "For x, how much is excluded?"
+        ]
+"""
+Stages:
+    0: Overall cost
+    1: Pals excluded
+    2: For each pal, how much are they excluded from the total cost
+
+"""
+stages = 0
 
 # Initialize a dictionary to store user answers
 answers = {}
@@ -67,21 +73,36 @@ answers = {}
 async def start_questions(ctx):
     await ctx.send("Process started, send '/q' to stop at any time.")
     # Iterate over each question
-    for question in questions:
-        await ctx.send(question)
-        
-        # Wait for the user's response
+    # for question in questions:
+    for stage in range(stages):
+        match stage:
+            case 0:
+                # How much did you spend?
+                await ctx.send(questions[0])
+            case 1:
+                # Is anyone excluded, out of:
+                tmp = questions[1]
+                for field in data_json.keys():
+                    tmp += field + ", "
+                tmp += " for example: bob, jerry, nick"
+                await ctx.send(tmp)
+            case 2:
+                # For each person excluded, how much are they excluded from the total cost?
+                tmp = questions[2] + "(" + str(answers[0]) + ")?"
+                await ctx.send(tmp)
+                pass
+
+                # Wait for the user's response
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
-        
+
+        # Store the user's answer, stop on /stop
         response = await bot.wait_for('message', check=check, timeout=60)
-        
-        # Store the user's answer
         if response.content.lower() == '/stop':
             break;
         else:
-            answers[question] = response.content
-    
+            answers[stage] = response.content
+
     # Display the collected answers
     await ctx.send("Thank you for answering the questions! Here are your answers:")
     for question, answer in answers.items():
